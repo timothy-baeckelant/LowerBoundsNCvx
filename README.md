@@ -1,4 +1,4 @@
-# Computing Lower Bounds on the Nonnegative Rank via Exact Non-Convex Optimization*
+# Computing Lower Bounds on the Nonnegative Rank via Exact Non-Convex Optimization
 
 This repository contains Python code accompanying the paper:
 
