@@ -113,15 +113,15 @@ def FSB(X, r, display = False):
     return [], [], None, runtime
         
 def RCB(X, r, display = False):
-    X     = X.copy()
+    Z     = X.copy()
     m, n  = X.shape
     for i in range(m):
         for j in range(n):
-            if   X[i,j] >  1e-6: X[i,j] =  1.0
-            elif X[i,j] < -1e-6: X[i,j] = -1.0
-            else:                X[i,j] =  0.0
+            if   X[i,j] >  1e-6: Z[i,j] =  1.0
+            elif X[i,j] < -1e-6: Z[i,j] = -1.0
+            else:                Z[i,j] =  0.0
     
-    udisj = np.any(X < 0)
+    udisj = np.any(Z < 0)
 
     start_time = time.time()
     model      = gp.Model()
@@ -132,18 +132,17 @@ def RCB(X, r, display = False):
     #model.Params.Heuristics = 0.5
     U = model.addMVar((m, r), vtype=GRB.BINARY)
     V = model.addMVar((r, n), vtype=GRB.BINARY)
-    Z = model.addMVar((m ,n), vtype=GRB.BINARY)
- 
-    model.addConstr((U @ V)/r <= Z)
-    model.addConstr(Z <= U @ V)
-
+    
     if udisj:
-        P = (X  > 0).astype(int)  # Positive entries (must be covered)
-        A = (X != 0).astype(int)  # Allowed entries (can be covered)
-        model.addConstr(P <= Z)
-        model.addConstr(Z <= A)
+        P = (Z  > 0).astype(int)  # Positive entries (must be covered)
+        A = (Z != 0).astype(int)  # Allowed entries (can be covered)
+        model.addConstr(U @ V >= P)
+        model.addConstr(U @ V <= r * A)
+        
     else:
-        model.addConstr(Z == X)
+        model.addConstr(U @ V >= Z)
+        model.addConstr(U @ V <= r * Z)
+
     
     model.optimize()
     end_time = time.time()
