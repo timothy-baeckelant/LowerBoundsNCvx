@@ -102,14 +102,13 @@ def FSB(X, r, display = False):
     runtime  = end_time - start_time
 
     if model.status==2:
-        print(f"OPTIMAL FOUND - ({m}x{n}), r={r} - time: {runtime} seconds")
+        print(f"FSB - Fooling set of size {r} - time: {runtime:.2f} seconds")
         return U.X, V.X, r, runtime
     if model.status==3:
-        print(f"OPTIMAL NOT FOUND - ({m}x{n}), r={r} - time: {runtime} seconds")
-        print(f"No fooling set of size {r}.")
-    return [], [], None, runtime
+        print(f"FSB - No fooling set of size {r} - time: {runtime:.2f} seconds")
+        return [], [], None, runtime
 
-    print(f"Optimization ended with status {model.status} - ({m}x{n}), r={r} - time: {runtime} seconds")
+    print(f"FSB - Optimization ended with status {model.status} - ({m}x{n}), r={r} - time: {runtime:.2f} seconds")
     return [], [], None, runtime
         
 def RCB(X, r, display = False):
@@ -149,14 +148,13 @@ def RCB(X, r, display = False):
     runtime  = end_time - start_time
 
     if model.status==2:
-        print(f"OPTIMAL FOUND - ({m}x{n}), r={r} - time: {runtime} seconds")
+        print(f"RCB - Rectangle covering of size {r} - time: {runtime:.2f} seconds")
         return U.X, V.X, r, runtime
     if model.status==3:
-        print(f"OPTIMAL NOT FOUND - ({m}x{n}), r={r} - time: {runtime} seconds")
-        print(f"No rectangle covering of size {r}.")
-    return [], [], None, end_time - start_time
+        print(f"RCB - No rectangle covering of size {r} - time: {runtime:.2f} seconds")
+        return [], [], None, end_time - start_time
 
-    print(f"Optimization ended with status {model.status} - ({m}x{n}), r={r} - time: {runtime} seconds")
+    print(f"RCB - Optimization ended with status {model.status} -  r={r} - time: {runtime:.2f} seconds")
     return [], [], None, runtime
     
         
@@ -196,7 +194,7 @@ def HSB(X, display = False, tol = 1e-12, delta = None, steps = False):
     v       = np.ones(n)
 
     HSBound = 0
-    if delta is not None: print(f"HSB - delta = {delta}")
+    if delta is not None: print(f"HSB - Delta = {delta}")
     while True:
         early_stop = False
 
@@ -217,7 +215,7 @@ def HSB(X, display = False, tol = 1e-12, delta = None, steps = False):
         
         if delta is not None and prodLR > 1.0 + delta:
             early_stop = True
-            if steps: print(f"HSB - Iter={nbrect} - EarlyStop - <L,R> = {prodLR}")
+            if steps: print(f"HSB - Iter={nbrect} - EarlyStop - <L,R> = {prodLR} - <L,X> = {(L * X).sum()}")
        
         if delta is not None and prodLR <= 1.0 + delta:
             modelNCVX.Params.BestObjStop = GRB.INFINITY
@@ -240,7 +238,7 @@ def HSB(X, display = False, tol = 1e-12, delta = None, steps = False):
             end_time = time.time()
             runtime  = end_time - start_time
 
-            print(f"HSB = {HSBound} - time: {runtime} seconds")
+            print(f"HSB = {HSBound} - time: {runtime:.2f} seconds")
 
             return L, u, v, HSBound, runtime
        
@@ -287,7 +285,7 @@ def SSB(X, display = False, tol = 1e-6, delta = None, steps = False):
     v       = X.max(axis=0)
 
     SSBound = 0
-    if delta is not None: print(f"SSB - delta = {delta}")
+    if delta is not None: print(f"SSB - Delta = {delta}")
     while True:
         early_stop = False
         
@@ -305,7 +303,7 @@ def SSB(X, display = False, tol = 1e-6, delta = None, steps = False):
         
         if delta is not None and prodLR > 1.0 + delta:
             early_stop = True
-            if steps: print(f"SSB - Iter={nbrect} - EarlyStop - <L,R> = {prodLR}")
+            if steps: print(f"SSB - Iter={nbrect} - EarlyStop - <L,R> = {prodLR} - <L,X> = {(L * X).sum()}")
        
         if delta is not None and prodLR <= 1.0 + delta:
             modelNCVX.Params.BestObjStop = GRB.INFINITY
@@ -325,7 +323,7 @@ def SSB(X, display = False, tol = 1e-6, delta = None, steps = False):
             end_time = time.time()
             runtime  = end_time - start_time
 
-            print(f"SSB = {SSBound} - time: {runtime} seconds")
+            print(f"SSB = {SSBound} - time: {runtime:.2f} seconds")
 
             return L, u, v, SSBound, runtime
        
