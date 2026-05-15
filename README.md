@@ -1,4 +1,4 @@
-# Computing Lower Bounds on the Nonnegative Rank via Exact Non-Convex Optimization
+# Computing Lower Bounds on the Nonnegative Rank via Non-Convex Optimization Solvers
 
 This repository contains Python code accompanying the paper:
 
@@ -123,9 +123,10 @@ If you use this code, please cite the paper:
 
 ```bibtex
 @article{BaeckelantVandaeleGillis2026,
-  title   = {Computing Lower Bounds on the Nonnegative Rank via Exact Non-Convex Optimization},
+  title   = {Computing Lower Bounds on the Nonnegative Rank via Non-Convex Optimization Solvers},
   author  = {Baeckelant, Timothy and Vandaele, Arnaud and Gillis, Nicolas},
-  year    = {2026}
+journal={arXiv preprint arXiv:2605.14058},
+ year    = {2026}
 }
 ```
 
