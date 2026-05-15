@@ -2,7 +2,7 @@
 
 This repository contains Python code accompanying the paper:
 
-**Computing Lower Bounds on the Nonnegative Rank via Exact Non-Convex Optimization**  
+**Computing Lower Bounds on the Nonnegative Rank via Non-Convex Optimization Solvers**  
 Timothy Baeckelant, Arnaud Vandaele, Nicolas Gillis, 2026.
 
 The code implements four bounds considered in the paper:
