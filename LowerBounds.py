@@ -45,7 +45,7 @@ def correl(n):
     X = (1-M@M.T)**2
     return X
 
-def FSB(X, r, display = False):
+def FSB(X, r, display = False, seed = None):
     X    = X.copy()
     m, n = X.shape
 
@@ -62,6 +62,7 @@ def FSB(X, r, display = False):
     model = gp.Model()
     if not display: model.Params.OutputFlag = 0
     model.Params.NonConvex  = 2
+    if seed is not None: model.Params.Seed = seed
 
     U = model.addMVar((m, r), vtype=GRB.BINARY)
     V = model.addMVar((r, n), vtype=GRB.BINARY)
@@ -111,7 +112,7 @@ def FSB(X, r, display = False):
     print(f"FSB - Optimization ended with status {model.status} - ({m}x{n}), r={r} - time: {runtime:.2f} seconds")
     return [], [], None, runtime
         
-def RCB(X, r, display = False):
+def RCB(X, r, display = False, seed = None):
     Z     = X.copy()
     m, n  = X.shape
     for i in range(m):
@@ -127,6 +128,7 @@ def RCB(X, r, display = False):
 
     if not display: model.Params.OutputFlag = 0
     model.Params.NonConvex  = 2
+    if seed is not None: model.Params.Seed = seed
     #model.Params.MIPFocus   = 1
     #model.Params.Heuristics = 0.5
     U = model.addMVar((m, r), vtype=GRB.BINARY)
@@ -158,7 +160,7 @@ def RCB(X, r, display = False):
     return [], [], None, runtime
     
         
-def HSB(X, display = False, tol = 1e-12, delta = None, steps = False):
+def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = False, seed = None):
     m, n    = X.shape
     X       = X/np.abs(X).max()
 
@@ -180,6 +182,8 @@ def HSB(X, display = False, tol = 1e-12, delta = None, steps = False):
     modelNCVX = gp.Model()
     if not display: modelNCVX.Params.OutputFlag = 0
     modelNCVX.Params.NonConvex = 2
+    if mip_gap is not None: modelNCVX.Params.MIPGap = mip_gap
+    if seed    is not None: modelNCVX.Params.Seed   = seed
 
     u_var     = modelNCVX.addMVar(m,vtype=GRB.BINARY)
     v_var     = modelNCVX.addMVar(n,vtype=GRB.BINARY)
@@ -248,7 +252,7 @@ def HSB(X, display = False, tol = 1e-12, delta = None, steps = False):
         L = Lvar.X
 
         
-def SSB(X, display = False, tol = 1e-6, delta = None, steps = False):
+def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = False, seed = None):
     m, n    = X.shape
    
     start_time = time.time()
@@ -269,6 +273,8 @@ def SSB(X, display = False, tol = 1e-6, delta = None, steps = False):
     modelNCVX = gp.Model()
     if not display: modelNCVX.Params.OutputFlag = 0
     modelNCVX.Params.NonConvex = 2
+    if mip_gap is not None: modelNCVX.Params.MIPGap = mip_gap
+    if seed    is not None: modelNCVX.Params.Seed   = seed
 
     u_var     = modelNCVX.addMVar(m, lb=0, ub=1.0)
     v_var     = modelNCVX.addMVar(n, lb=0, ub=X.max(axis=0))
