@@ -117,6 +117,20 @@ Partial matrices are encoded using the following convention:
 
 For such matrices, the functions automatically detect the presence of unspecified entries and adapt the corresponding combinatorial formulations.
 
+### Reproducing the tables
+
+Place `ReproduceTables.py`, `LowerBounds.py` and `SlackMat.mat` in the same directory, then run:
+
+```bash
+python ReproduceTables.py
+```
+
+By default, `QUICK=True` runs M5 with seed 0. Set `QUICK=False` to run the article instances with seeds 0–29, except for the predefined single-seed cases. Customize `METHODS`, `MATRICES`, `SEEDS` and `TIME_LIMIT` at the top of the script; longer or uncapped runs are specified in `LONG_RUNS`.
+
+The script writes `raw_runs.csv` and one LaTeX table per method. Choose a new `OUTPUT` directory for each campaign.
+
+Incomplete HSB/SSB runs report the lower bound `B` computed using Gurobi's `ObjBound`, rounded down. With `CHECK_SSB=True`, additional runs at `MIPGap=1e-6` check SSB precision; their times are excluded from the reported averages.
+
 ## Citation
 
 If you use this code, please cite the paper:
