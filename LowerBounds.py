@@ -185,8 +185,11 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
 
     modelNCVX = gp.Model()
     if not display: modelNCVX.Params.OutputFlag = 0
-    modelNCVX.Params.NonConvex = 2
+    modelNCVX.Params.NonConvex  = 2
+    modelNCVX.Params.BestBdStop = 1.0 + tol
+    modelNCVX.Params.MIPGapAbs  = 0.0
     if mip_gap is not None: modelNCVX.Params.MIPGap = mip_gap
+    mip_gap = modelNCVX.Params.MIPGap
     if seed    is not None: modelNCVX.Params.Seed   = seed
 
     u_var       = modelNCVX.addMVar(m,vtype=GRB.BINARY)
@@ -209,6 +212,7 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
     while True:
         if time_limit is not None and time.time() - start_time >= time_limit: break
         early_stop = False
+        modelNCVX.Params.MIPGap = mip_gap if delta is not None else 0.0
 
         if delta is not None:
             modelNCVX.Params.BestObjStop = 1.0 + delta
@@ -227,7 +231,7 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
         alpha_bar = getattr(modelNCVX, "ObjBound", GRB.INFINITY)
         
         if modelNCVX.Status in (GRB.OPTIMAL, GRB.USER_OBJ_LIMIT, GRB.TIME_LIMIT, GRB.INTERRUPTED) and 0 < alpha_bar < GRB.INFINITY:
-            B     = max(B, float((L * X).sum()) / alpha_bar)
+            B     = HSBound = max(B, float((L * X).sum()) / alpha_bar)
         if modelNCVX.Status not in (GRB.OPTIMAL, GRB.USER_OBJ_LIMIT) or modelNCVX.SolCount == 0: break
     
         u, v      = u_var.X, v_var.X
@@ -240,7 +244,8 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
             if steps: print(f"HSB - Iter={nbrect} - EarlyStop - <L,R> = {prodLR} - <L,X> = {(L * X).sum()}")
        
         if delta is not None and prodLR <= 1.0 + delta:
-            modelNCVX.Params.BestObjStop = GRB.INFINITY
+            modelNCVX.Params.BestObjStop = 1.0 + max(tol, 1e-6)
+            modelNCVX.Params.MIPGap      = 0.0
             modelNCVX.Params.MIPFocus    = 3
            
             modelNCVX.Params.TimeLimit = GRB.INFINITY
@@ -251,8 +256,8 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
             alpha_bar = getattr(modelNCVX, "ObjBound", GRB.INFINITY)
             
             if modelNCVX.Status in (GRB.OPTIMAL, GRB.USER_OBJ_LIMIT, GRB.TIME_LIMIT, GRB.INTERRUPTED) and 0 < alpha_bar < GRB.INFINITY:
-                B     = max(B, float((L * X).sum()) / alpha_bar)
-            if modelNCVX.Status not in (GRB.OPTIMAL,) or modelNCVX.SolCount == 0: break
+                B     = HSBound = max(B, float((L * X).sum()) / alpha_bar)
+            if modelNCVX.Status not in (GRB.OPTIMAL, GRB.USER_OBJ_LIMIT) or modelNCVX.SolCount == 0: break
             
             u, v      = u_var.X, v_var.X
             idx_u     = np.where(u > 0.5)[0]
@@ -260,13 +265,13 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
             prodLR    = L[np.ix_(idx_u, idx_v)].sum()
 
         if not early_stop and modelNCVX.Status == GRB.OPTIMAL:
-            HSB_iter  = float((L * X).sum())/prodLR
+            HSB_iter  = float((L * X).sum())/alpha_bar
             HSBound   = max(HSBound, HSB_iter)
 
             if steps: print(f"HSB - Iter={nbrect} - <L,R> = {prodLR} - Current HSB: {HSB_iter} - Best HSB: {HSBound}")
        
         # Numerical stopping criterion
-        if not early_stop and modelNCVX.Status == GRB.OPTIMAL and 0 < prodLR <= 1 + tol:
+        if 0 < alpha_bar <= 1 + tol:
             end_time  = time.time()
             runtime   = end_time - start_time
 
