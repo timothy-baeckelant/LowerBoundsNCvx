@@ -319,6 +319,7 @@ def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = Fa
     if not display: modelNCVX.Params.OutputFlag = 0
     modelNCVX.Params.NonConvex = 2
     if mip_gap is not None: modelNCVX.Params.MIPGap = mip_gap
+    mip_gap = modelNCVX.Params.MIPGap
     if seed    is not None: modelNCVX.Params.Seed   = seed
 
     u_var     = modelNCVX.addMVar(m, lb=0, ub=1.0)
@@ -345,7 +346,7 @@ def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = Fa
         early_stop = False
         
         if delta is not None:
-            modelNCVX.Params.BestObjStop = 1.0 + delta
+            modelNCVX.Params.BestObjStop = 1.0 + delta if mip_gap else 1.0 + tol
        
         modelNCVX.setObjective(u_var @ L @ v_var, GRB.MAXIMIZE)
        
@@ -369,7 +370,7 @@ def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = Fa
             early_stop = True
             if steps: print(f"SSB - Iter={nbrect} - EarlyStop - <L,R> = {prodLR} - <L,X> = {(L * X).sum()}")
        
-        if delta is not None and prodLR <= 1.0 + delta:
+        if delta is not None and prodLR <= 1.0 + delta and mip_gap > 0:
             modelNCVX.Params.BestObjStop = GRB.INFINITY
            
             modelNCVX.Params.TimeLimit = GRB.INFINITY
@@ -380,19 +381,19 @@ def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = Fa
             alpha_bar = getattr(modelNCVX, "ObjBound", GRB.INFINITY)
             if modelNCVX.Status in (GRB.OPTIMAL, GRB.USER_OBJ_LIMIT, GRB.TIME_LIMIT, GRB.INTERRUPTED) and 0 < alpha_bar < GRB.INFINITY:
                 B     = max(B, float((L * X).sum()) / alpha_bar)
-            if modelNCVX.Status not in (GRB.OPTIMAL,) or modelNCVX.SolCount == 0: break
+            if modelNCVX.Status not in (GRB.OPTIMAL, GRB.USER_OBJ_LIMIT) or modelNCVX.SolCount == 0: break
         
             u, v      = u_var.X, v_var.X
             prodLR    = u@L@v
 
-        if not early_stop and modelNCVX.Status == GRB.OPTIMAL:
+        if not early_stop and prodLR > 0 and (modelNCVX.Status == GRB.OPTIMAL or 0 < alpha_bar <= 1.0 + tol):
             SSB_iter  = float((L * X).sum())/prodLR
             SSBound   = max(SSBound, SSB_iter)
 
-            if steps: print(f"SSB - Iter={nbrect} - <L,R> = {prodLR} - Current SSB: {SSB_iter} - Best SSB: {SSBound}")
+            if steps: print(f"SSB - Iter={nbrect} - <L,R> = {prodLR} - Current SSB: {SSB_iter} - Best SSB: {SSBound} - U = {(L * X).sum()}")
        
         # Numerical stopping criterion
-        if not early_stop and modelNCVX.Status == GRB.OPTIMAL and 0 < prodLR <= 1 + tol:
+        if 0 < alpha_bar <= 1.0 + tol:
             end_time  = time.time()
             runtime   = end_time - start_time
             
@@ -400,6 +401,22 @@ def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = Fa
             print(f"Certificate : {B} <= SSB(X) <= {upper_bound}")
 
             return L, u, v, SSBound, runtime, B, upper_bound
+
+        if mip_gap > 0 and not early_stop and modelNCVX.Status == GRB.OPTIMAL and 0 < prodLR <= 1.0 + tol:
+            mip_gap = 0.0
+            modelNCVX.Params.MIPGap         = 0.0
+            modelNCVX.Params.MIPGapAbs      = 0.0
+            modelNCVX.Params.BestObjStop    = 1.0 + tol
+            modelNCVX.Params.BestBdStop     = 1.0 + tol
+            modelNCVX.Params.FeasibilityTol = 1e-9
+            modelNCVX.Params.OptimalityTol  = 1e-9
+            modelNCVX.Params.IntFeasTol     = 1e-9
+            modelLP.Params.FeasibilityTol   = 1e-9
+            modelLP.Params.OptimalityTol    = 1e-9
+            modelNCVX.reset()
+            continue
+
+        if prodLR <= 1.0: break
        
         nbrect += 1
         modelLP.addConstr(u@(Lvar@ v) <= 1)
