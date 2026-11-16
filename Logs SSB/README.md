@@ -1,6 +1,12 @@
 # SSB outputs and exact certificates
 
-This directory collects the available numerical matrices $L$ used in the SSB computations reported in the paper. The files are grouped by matrix family:
+This directory collects the available numerical matrices $L$ used in the SSB computations reported in the paper. We also report  three numerical values alongside the witness matrix $L$ for each input matrix $X$: 
+
+- $U = \langle L, X \rangle$ is the objective value of the reported witness.
+- $\bar{\alpha}$ is an upper bound on the separation objective, the maximum of $\langle L, R \rangle$ over all nonnegative rank-one matrices $R$ satisfying $R \leq X$ entrywise.
+- $B = U / \bar{\alpha}$ is the resulting lower bound on $\mathrm{SSB}(X)$.
+
+The files are grouped by matrix family:
 
 - [correl.txt](correl.txt): slack submatrices of the correlation polytope;
 - [ledms.txt](ledms.txt): linear Euclidean distance matrices;
