@@ -163,17 +163,18 @@ def RCB(X, r, display = False, seed = None, time_limit = None):
 
         
 def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = False, seed = None, time_limit = None):
+    X       = np.asarray(X)
     m, n    = X.shape
     if not np.any(X):
         return np.zeros_like(X, dtype=float), np.zeros(m), np.zeros(n), 0.0, 0.0, 0.0, 0.0
-    X       = X/np.abs(X).max()
+    maskX_0 = X == 0
+    X       = X.astype(float, copy=False) / float(X.max())
 
     start_time = time.time()
     modelLP = gp.Model()
     if not display: modelLP.Params.OutputFlag = 0
     modelLP.Params.Method = 1
 
-    maskX_0         = X <= 1e-12
     L_lb            = np.full(X.shape, -GRB.INFINITY, dtype=float)
     L_lb[maskX_0]   = 0.0
 
@@ -181,7 +182,12 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
     L_ub[maskX_0]   = 0.0
     Lvar            = modelLP.addMVar((m, n), lb=L_lb, ub=L_ub)
 
-    modelLP.setObjective((Lvar*X).sum(),GRB.MAXIMIZE)    
+    objective = X
+    if np.any(X[~maskX_0] < 1e-13):
+        objective = X * 2**20
+        if np.any(objective[~maskX_0] < 1e-13):
+            raise ValueError("HSB coefficients span too wide a range for the solver.")
+    modelLP.setObjective((Lvar * objective).sum(), GRB.MAXIMIZE)   
 
     modelNCVX = gp.Model()
     if not display: modelNCVX.Params.OutputFlag = 0
@@ -269,7 +275,7 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
             end_time  = time.time()
             runtime   = end_time - start_time
 
-            print(f"HSB = {HSBound} - time: {runtime:.2f} seconds")
+            print(f"HSB estimate = {HSBound} - time: {runtime:.2f} seconds")
             print(f"Certificate : {B} <= HSB(X) <= {upper_bound}")
 
             return L, u, v, HSBound, runtime, B, upper_bound
@@ -307,6 +313,7 @@ def HSB(X, display = False, tol = 1e-12, delta = None, mip_gap = None, steps = F
 
 
 def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = False, seed = None, time_limit = None):
+    X       = np.asarray(X)
     m, n    = X.shape
     if not np.any(X):
         return np.zeros_like(X, dtype=float), np.zeros(m), np.zeros(n), 0.0, 0.0, 0.0, 0.0
@@ -315,7 +322,12 @@ def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = Fa
     modelLP = gp.Model()
     if not display: modelLP.Params.OutputFlag = 0
 
-    maskX_pos       = X > 1e-12
+    maskX_pos = X > 0
+    maxima    = np.asarray(X.max(axis=0), dtype=float)
+    scale     = np.where((maxima > 0) & ((maxima < 1) | (maxima > 1e6)), maxima, 1.0)
+    X         = X / scale
+    if np.any(X[maskX_pos] < 1e-13):
+        raise ValueError("Rescale the input: a positive SSB coefficient is too small for the solver.")
     maskX_0         = ~maskX_pos
     L_lb = np.full(X.shape, -GRB.INFINITY, dtype=float)
     L_lb[maskX_0]   = 0.0
@@ -335,8 +347,8 @@ def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = Fa
 
     u_var     = modelNCVX.addMVar(m, lb=0, ub=1.0)
     v_var     = modelNCVX.addMVar(n, lb=0, ub=X.max(axis=0))
-    idx_X_pos = np.argwhere(X >  0)
-    idx_X_0   = np.argwhere(X == 0)
+    idx_X_pos = np.argwhere(maskX_pos)
+    idx_X_0   = np.argwhere(maskX_0)
 
     for i, j in idx_X_0  : modelNCVX.addConstr(u_var[i]*v_var[j] == 0)
     modelNCVX.addConstrs(u_var[i] * v_var[j] <= X[i, j] for i, j in idx_X_pos)
@@ -408,7 +420,7 @@ def SSB(X, display = False, tol = 1e-6, delta = None, mip_gap = None, steps = Fa
             end_time  = time.time()
             runtime   = end_time - start_time
             
-            print(f"SSB = {SSBound} - time: {runtime:.2f} seconds")
+            print(f"SSB estimate = {SSBound} - time: {runtime:.2f} seconds")
             print(f"Certificate : {B} <= SSB(X) <= {upper_bound}")
 
             return L, u, v, SSBound, runtime, B, upper_bound
@@ -542,7 +554,8 @@ if __name__ == "__main__":
     print('******************************* Summary ********************************')
     print("Matrix : LEDM 5")
     print(f'FSB = {bound_fsb}')
-    print(f'HSB = {bound_hsb}')
-    print(f'SSB = {bound_ssb}')
+    print(f'HSB estimate = {bound_hsb}')
+    print(f'SSB estimate = {bound_ssb}')
     print(f'RCB = {bound_rcb}')
     print('************************************************************************')
+
